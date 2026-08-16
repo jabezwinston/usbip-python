@@ -1,0 +1,7 @@
+# Tooling to build the Python library docs (the MkDocs site under doc/).
+# Run these from the Python tree root - the directory holding the `usbip` package:
+#   pip install -r doc/requirements.txt
+#   mkdocs build -f doc/mkdocs.yml --strict
+mkdocs>=1.6
+mkdocs-material>=9.5
+mkdocstrings[python]>=0.25

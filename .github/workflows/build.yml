@@ -1,0 +1,41 @@
+name: build
+
+# Byte-compile the library and the examples, then run the linters. All rule
+# configuration lives in pyproject.toml ([tool.ruff] / [tool.mypy]); every rule that
+# is switched off there carries the reason it is switched off.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Byte-compile the library and examples
+        run: python3 -m compileall -q usbip examples
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      # ruff is pinned: its formatter is allowed to change output between minor
+      # releases, so an unpinned install would eventually fail the format gate on
+      # untouched code. Bump this and .pre-commit-config.yaml together.
+      - name: Install the linters
+        run: pip install ruff==0.16.2 mypy
+      - name: ruff (lint)
+        run: ruff check usbip examples
+      - name: ruff (format)
+        run: ruff format --check usbip examples
+      - name: mypy (library only)
+        run: mypy usbip

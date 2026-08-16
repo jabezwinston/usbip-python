@@ -1,0 +1,154 @@
+site_name: USBIP - Python library
+site_description: Create virtual USB devices and write USB host drivers over USB/IP - pure Python.
+site_author: Jabez Winston
+# repo_url deliberately points at the published split repo (usbip-python), not
+# the libusbip monorepo these sources live in - the docs are synced there.
+repo_url: https://github.com/jabezwinston/usbip-python
+repo_name: jabezwinston/usbip-python
+copyright: Copyright &copy; 2026 Jabez Winston - MIT
+
+docs_dir: pages
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.tracking
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          # mkdocstrings resolves `paths` against this config file's directory, so
+          # ".." is the Python tree root - the directory holding the importable
+          # `usbip` package.
+          paths: [".."]
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            members_order: source
+            filters: ["!^_"]
+            show_if_no_docstring: true
+            merge_init_into_class: true
+            separate_signature: true
+            show_signature_annotations: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_source: true
+            heading_level: 2
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - def_list
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  # `:material-rocket-launch:` and friends are Material icon shortcodes - without
+  # this extension they render as literal text.
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  # The custom fence turns ```mermaid blocks into <pre class="mermaid">, which
+  # Material renders client-side (it pulls mermaid@11 from unpkg, so diagrams
+  # need network in the browser - an offline preview shows an empty block).
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  # `--8<-- "examples/..."` embeds a runnable example verbatim, so the guide pages
+  # cannot drift from the code. Snippet base paths resolve against the CWD, and
+  # mkdocs is always run with the Python tree root as CWD:
+  #     cd python && mkdocs build -f doc/mkdocs.yml      (monorepo)
+  #     mkdocs build -f doc/mkdocs.yml                   (usbip-python)
+  # "." covers that; ".." also covers running it from inside doc/.
+  # check_paths turns a missing example into a build error.
+  - pymdownx.snippets:
+      base_path: [".", ".."]
+      check_paths: true
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Introduction: index.md
+  - Getting Started: getting-started.md
+  - USB concepts: concepts.md
+  - Device:
+      - Overview: device/index.md
+      - USB Classes:
+          - Class inventory: device/classes/index.md
+          - Input Device (HID): device/classes/hid.md
+          - Serial Port (CDC-ACM): device/classes/serial.md
+          - Disk Storage (MSC): device/classes/storage.md
+          - Webcam (UVC): device/classes/video.md
+          - Sound Card (UAC): device/classes/audio.md
+          - Media Transfer (MTP): device/classes/mtp.md
+          - Firmware Upgrade (DFU): device/classes/dfu.md
+          - Bluetooth Dongle (HCI): device/classes/bluetooth.md
+      - Vendor Devices & WebUSB: device/vendor.md
+      - Composite devices: device/composite.md
+      - Multiple devices: device/multi-device.md
+  - Host:
+      - Overview: host/index.md
+      - Host driver: host/host-driver.md
+      - pyusb: host/pyusb.md
+  - Platforms:
+      - USB/IP clients: platforms/index.md
+      - Linux: platforms/linux.md
+      - Windows: platforms/windows.md
+      - macOS: platforms/macos.md
+      - Hardware clients: platforms/hw-clients.md
+  - Components:
+      - Overview: components/index.md
+      - Transport: components/transport.md
+      - Device & functions: components/device.md
+      - Device classes: components/classes.md
+      - Host & drivers: components/host.md
+  - Examples: examples.md
+  - Tools & Troubleshooting:
+      - Troubleshooting: troubleshooting.md
+      - Environment variables: tools/env.md
+      - Capturing traffic: tools/capture.md
+      - Going remote: tools/remote.md
+  - API Reference:
+      - Core types & errors: api/core.md
+      - Device core API: api/device.md
+      - Class layer: api/function.md
+      - Host API: api/host.md
+      - Transport: api/transport.md
+      - Capture (pcap): api/pcap.md
+      - Logging: api/logging.md
+      - Device classes: api/classes-device.md
+      - Host drivers: api/classes-host.md
+  - C library reference ↗: c-reference.md

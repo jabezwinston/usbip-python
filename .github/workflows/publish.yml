@@ -1,0 +1,133 @@
+name: publish
+
+# Build the sdist and the wheel, and upload them to PyPI when a v* tag is pushed.
+#
+# Uploads use PyPI's Trusted Publishing (OIDC), not an API token: GitHub mints a
+# short-lived identity token for this repository, this workflow file and this
+# environment, and PyPI exchanges it for an upload token that expires in minutes.
+# Nothing long-lived sits in the repository secrets. Attestations come with it - the
+# publish action signs each file with that same identity (PEP 740) by default, and
+# PyPI shows the result on the release page.
+#
+# One-time setup on https://pypi.org/manage/account/publishing/ - the project does not
+# exist there yet, so this is added as a "pending publisher":
+#
+#     PyPI project name   usbip
+#     Owner               jabezwinston
+#     Repository          usbip-python
+#     Workflow name       publish.yml
+#     Environment name    pypi
+#
+# All five must match what is written here; renaming this file breaks the upload until
+# the publisher is updated to match. Then, in this repository: Settings -> Environments
+# -> New environment `pypi`, with a required reviewer - a run of this workflow can
+# publish, and that gate is the last place a wrong tag can be stopped.
+#
+# The TestPyPI job below is the same again on https://test.pypi.org/manage/account/
+# publishing/ with environment `testpypi`. It only ever runs from the Actions tab, so
+# a release does not depend on TestPyPI being configured at all.
+#
+# On pull requests and pushes to main nothing is uploaded: the build job alone runs,
+# and `twine check --strict` catches a README that would not render on PyPI or
+# metadata PyPI would reject - at the pull request, not at the tag.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:      # dry run: build, then upload to TestPyPI
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # nothing here pushes; don't leave a credential in .git/config for the
+          # build to pick up
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install the build tooling
+        run: python3 -m pip install --upgrade build twine
+
+      # Both artifacts, from the same source tree: the wheel is what pip installs,
+      # the sdist is what distributions build from.
+      - name: Build the sdist and the wheel
+        run: python3 -m build
+
+      - name: Check the built distributions
+        run: twine check --strict dist/*
+
+      # A PyPI version is permanent and a tag is the only thing that reaches PyPI, so
+      # the tag has to name the version that was actually built. Checking the built
+      # filename rather than usbip.__version__ checks the thing that gets uploaded.
+      - name: Tag names the version that was built
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          want="usbip-${GITHUB_REF_NAME#v}.tar.gz"
+          if [ ! -f "dist/$want" ]; then
+            echo "tag $GITHUB_REF_NAME expects dist/$want, but the build produced:"
+            ls dist
+            echo "bump __version__ in usbip/__init__.py, or move the tag"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  # The upload jobs build nothing and check nothing out: they take the files the build
+  # job already produced and checked, which is what keeps `id-token: write` - the
+  # permission that can publish - confined to a job that runs no project code.
+  pypi:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/usbip
+    permissions:
+      id-token: write     # mint the OIDC token PyPI exchanges for an upload token
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      # `release/v1` is the ref the action's own documentation asks for: it tracks the
+      # v1 line so security fixes land without a bump here, and PyPI's own upload
+      # requirements (metadata versions, attestation formats) move underneath it.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # Dry run, from the Actions tab only: the same files, uploaded to TestPyPI, where a
+  # version can be thrown away. `skip-existing` keeps a second run from failing on the
+  # files TestPyPI already has - the real PyPI job deliberately has no such escape.
+  testpypi:
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/usbip
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true

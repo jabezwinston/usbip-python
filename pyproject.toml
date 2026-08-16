@@ -1,0 +1,136 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "usbip"
+dynamic = ["version"]
+description = "Create virtual USB devices and write USB host drivers over USB/IP - pure Python, no C dependency"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Jabez Winston", email = "jabezwinston@gmail.com" }]
+keywords = [
+    "usb",
+    "usbip",
+    "usb-ip",
+    "virtual-usb",
+    "device-emulation",
+    "vhci"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Emulators",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB)",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Audio",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Communications Device Class (CDC)",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Human Interface Device (HID)",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Mass Storage",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Vendor",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Video (UVC)",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Wireless Controller",
+]
+dependencies = []
+
+[project.optional-dependencies]
+# Extra packages used only by the bundled examples: bumble (BLE peripherals);
+# numpy + pillow for the UVC example's hand-rolled MP4 decode / MJPEG encode;
+# cryptography for the FIDO/FIDO2 authenticator (P-256/Ed25519, X.509, ECDH).
+examples = ["bumble", "numpy", "pillow", "cryptography"]
+# Tooling for running the test suite and building/publishing the package.
+# fido2 (Yubico) is used only by test_fido_conformance.py for independent CTAP2
+# cross-validation; that test skips if it's absent.
+dev = ["pytest", "build", "twine", "fido2"]
+# Static analysis. `ruff` is both the linter and the formatter; `mypy` type-checks
+# the library only; `vulture` is an occasional dead-code sweep; `pre-commit` runs
+# ruff on every commit. See the [tool.ruff] / [tool.mypy] blocks below.
+lint = ["ruff", "mypy", "vulture", "pre-commit"]
+
+[project.urls]
+Homepage = "https://github.com/jabezwinston/usbip-python"
+Repository = "https://github.com/jabezwinston/usbip-python"
+Issues = "https://github.com/jabezwinston/usbip-python/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "usbip.__version__" }
+
+# Discover only usbip*, never its example or test siblings.
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["usbip*"]
+
+# ---------------------------------------------------------------------------
+# ruff - linter and formatter (replaces flake8 / isort / pyupgrade / pep8-naming)
+#
+#   ruff check usbip examples     lint
+#   ruff format usbip examples    format
+#
+# There is no `ignore` list and no `# noqa` in the tree: every rule selected below
+# passes. Rules are chosen rather than silenced, so a warning here is always a real
+# one to fix.
+#
+# 100 columns, not the 88 default: the descriptor and opcode tables read as aligned
+# columns, and 99% of the existing lines already fit under 100.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py38"      # keep in step with requires-python
+extend-exclude = ["build", "dist"]
+
+[tool.ruff.lint]
+# F   pyflakes            - undefined names, unused imports/variables
+# E4/E7/E9  pycodestyle   - import placement, statement and syntax errors
+# W   pycodestyle         - trailing whitespace and newline hygiene
+# I   isort               - import ordering
+# UP  pyupgrade           - modern syntax within the 3.8 floor
+# B   flake8-bugbear      - likely bugs (mutable defaults, raise-without-from, ...)
+# C4  comprehensions      - needless list()/dict()/tuple() calls
+# RET flake8-return       - return-path consistency
+# PIE misc lints          - redundant placeholders and arguments
+#
+# Not selected, because these families cannot pass without damaging the code:
+#   E5  (line length)  - would reflow the fenced descriptor/opcode tables
+#   N   (pep8-naming)  - `idVendor`, `bcdDevice`, `appIDLE` are USB/DFU spec names
+#   SIM115             - the flagged handles are long-lived and closed by their owner
+#   RUF001-003         - the micro sign and arrows in comments are intentional
+select = ["F", "E4", "E7", "E9", "W", "I", "UP", "B", "C4", "RET", "PIE"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["usbip"]
+
+
+# ---------------------------------------------------------------------------
+# mypy - the library only (the examples pull in optional third-party packages).
+#   mypy usbip
+# ---------------------------------------------------------------------------
+[tool.mypy]
+files = ["usbip"]
+# No `python_version` pin: current mypy refuses anything below 3.10, while this
+# package still supports 3.8. Ruff's `target-version` is what holds that floor.
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+
+# ---------------------------------------------------------------------------
+# vulture - dead-code sweep, run by hand rather than in CI: it cannot tell an
+# unused-but-required callback parameter (HCI command fields, bumble callbacks)
+# from genuinely dead code, so it always needs a human read.
+#   vulture
+# ---------------------------------------------------------------------------
+[tool.vulture]
+min_confidence = 80
+paths = ["usbip", "examples"]

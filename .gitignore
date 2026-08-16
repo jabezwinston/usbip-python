@@ -1,0 +1,29 @@
+__pycache__/
+*.pyc
+*.nvs
+
+# Generated API documentation (MkDocs)
+/doc/site/
+
+# Python packaging / build artifacts
+/dist/
+/build/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Backing images and firmware blobs the examples create in the working directory
+*.img
+dfu_fw*.bin
+cdc_dfu_firmware.bin
+
+# FIDO example credential store (created at runtime)
+fido_keys.ini
+fido_keys.ini.tmp
+
+*.pcapng
+
+# Editor swap files
+*.swp
